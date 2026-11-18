@@ -37,7 +37,10 @@ cd /home/antigravity/kit-gespro-cualidades-blandas && npm test
 
 ```bash
 npm run build:standalone   # genera dist/kit-gespro-cualidades-blandas.html
+cp dist/kit-gespro-cualidades-blandas.html docs/index.html   # publica en GitHub Pages
 ```
+
+**Versión web pública:** https://josealbertotjv-debug.github.io/kit-gespro-cualidades-blandas/ (GitHub Pages, carpeta `docs/`).
 
 El HTML generado incluye la base de conocimiento, el agente IA y un backend local que emula todas las rutas `/api/*`.
 Los datos se guardan en el `localStorage` del navegador (clave `kit-gespro-gp13-v1`). Se abre con doble clic en Safari,
