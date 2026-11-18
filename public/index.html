@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Kit-GesPro (GP-13) · Evaluación 360° de Cualidades Blandas y Liderazgo con Agente IA</title>
+  <meta name="description" content="Módulo GP-13 de Kit-GesPro: evaluación multifuente 360° de cualidades blandas entre pares, hacia supervisores, gerentes y directores, con Agente de IA nutrido por sitios web científicos especializados (O*NET, CREIO, Project Oxygen, CCL SBI, Edmondson).">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar" id="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <div>
+          <span class="brand-title">Kit-GesPro</span>
+          <span class="brand-badge">GP-13 · Cualidades Blandas 360° + Agente IA</span>
+        </div>
+      </div>
+
+      <div class="topbar-controls">
+        <div class="company-selector-wrap">
+          <label for="companySelect">Empresa Auditada</label>
+          <select id="companySelect" aria-label="Seleccionar empresa del ecosistema GesPro"></select>
+        </div>
+        <button class="btn sm" id="btnNewEmployeeModal" type="button">+ Alta Empleado / Líder</button>
+        <button class="btn primary sm" id="btnQuickEvaluate" type="button">Nueva Evaluación 360°</button>
+        <button class="btn sm" id="btnThemeToggle" type="button" aria-label="Cambiar modo claro u oscuro" title="Modo claro / oscuro">◐ Tema</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav-strip" aria-label="Módulos del sistema">
+    <div class="nav-inner" role="tablist">
+      <button class="nav-tab active" role="tab" id="tabBtn-panel" data-tab="panel" aria-selected="true" type="button">
+        <span class="step-code">01</span> Tablero 360° y Liderazgo
+      </button>
+      <button class="nav-tab" role="tab" id="tabBtn-evaluar" data-tab="evaluar" aria-selected="false" type="button">
+        <span class="step-code">02</span> Evaluar (Pares, Superiores y Auto)
+      </button>
+      <button class="nav-tab" role="tab" id="tabBtn-reportes" data-tab="reportes" aria-selected="false" type="button">
+        <span class="step-code">03</span> Expediente IA y Plan 30-60-90
+      </button>
+      <button class="nav-tab" role="tab" id="tabBtn-copiloto" data-tab="copiloto" aria-selected="false" type="button">
+        <span class="step-code">04</span> Consultor Agente IA
+      </button>
+      <button class="nav-tab" role="tab" id="tabBtn-fuentes" data-tab="fuentes" aria-selected="false" type="button">
+        <span class="step-code">05</span> Sitios Especializados (Base Científica)
+      </button>
+    </div>
+  </nav>
+
+  <main class="main-wrap">
+    <!-- ====================================================================
+         SECCIÓN 01: TABLERO ORGANIZACIONAL 360° Y LIDERAZGO
+         ==================================================================== -->
+    <section id="view-panel" role="tabpanel" aria-labelledby="tabBtn-panel">
+      <div class="section-header">
+        <div>
+          <span class="eyebrow" id="companyEyebrow">ECOSISTEMA GESPRO · DIAGNÓSTICO MULTIFUENTE EN VIVO</span>
+          <h1 id="companyMainTitle">Evaluación 360° de Cualidades Blandas y Liderazgo</h1>
+          <p class="section-lede" id="companyMainDesc">
+            Medición conductual cruzada: empleados entre sí (Pares), empleados hacia sus supervisores, gerentes y directores (Ascendente), líderes hacia su equipo (Descendente) y Autoevaluación, calibrada con escalas BARS y evidencia SBI.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn sm" id="btnOpenCompanyDossier" type="button">Ver Informe Ejecutivo IA de la Empresa</button>
+          <button class="btn primary sm" id="btnGoToEvaluateFromHero" type="button">Registrar Evaluación 360° →</button>
+        </div>
+      </div>
+
+      <!-- KPIs Globales -->
+      <div class="kpi-grid" id="globalKpiGrid"></div>
+
+      <!-- Fila 1: Mapa de Calor por Nivel Jerárquico + Matriz de Seguridad Psicológica de Edmondson -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">DIRECCIÓN · GERENCIA · SUPERVISIÓN · OPERATIVO</span>
+              <h3>Desempeño Conductual por Nivel Jerárquico</h3>
+            </div>
+            <span class="badge accent">Escala BARS 1.00 – 5.00</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="hierarchyTable">
+              <thead>
+                <tr>
+                  <th>Nivel Jerárquico</th>
+                  <th>Plantilla</th>
+                  <th>Eval. Externa</th>
+                  <th>Liderazgo Ascendente (Subordinados → Jefe)</th>
+                  <th>Cohesión Pares</th>
+                  <th>Brecha Auto − Ext</th>
+                </tr>
+              </thead>
+              <tbody id="hierarchyTableBody"></tbody>
+            </table>
+          </div>
+          <p style="font-size:12px;color:var(--ink-3);margin-top:12px">
+            * La columna <b>Liderazgo Ascendente (UPWARD)</b> refleja cómo califican los empleados a sus supervisores, gerentes y directores según <i>Google Project Oxygen</i> y <i>Seguridad Psicológica de Edmondson</i>.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">AMY EDMONDSON (HBS, 1999) · PROJECT ARISTOTLE</span>
+              <h3>Matriz de Seguridad Psicológica vs. Exigencia</h3>
+            </div>
+            <span class="badge blue">Clima de Equipo y Liderazgo</span>
+          </div>
+          <div id="edmondsonMatrixContainer"></div>
+        </div>
+      </div>
+
+      <!-- Fila 2: Alertas Psicométricas del Agente IA + Ranking de las 12 Competencias -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">AUDITORÍA AUTOMÁTICA DEL AGENTE IA</span>
+              <h3>Puntos Ciegos de Liderazgo y Alertas Relacionales</h3>
+            </div>
+            <span class="badge warn" id="riskCountBadge">0 alertas</span>
+          </div>
+          <div id="riskAlertsList" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">TAXONOMÍA O*NET + CREIO GOLEMAN + PROJECT OXYGEN</span>
+              <h3>Perfil Organizacional en las 12 Cualidades Blandas</h3>
+            </div>
+            <span class="badge">Autoevaluación vs. Observadores</span>
+          </div>
+          <div id="companyCompetenciesBars" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
+
+      <!-- Fila 3: Plantilla Organizacional 360° completa -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <span class="eyebrow">ORGANIGRAMA Y PLANTILLA EVALUADA</span>
+            <h3>Colaboradores, Supervisores, Gerentes y Directores</h3>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="filterLevelSelect" style="width:auto;padding:5px 10px;font-size:12.5px" aria-label="Filtrar por nivel jerárquico">
+              <option value="ALL">Todos los niveles</option>
+              <option value="DIRECCION">Dirección / Alta Gerencia</option>
+              <option value="GERENCIA">Gerencias de Área</option>
+              <option value="SUPERVISION">Supervisión / Coordinación</option>
+              <option value="OPERATIVO">Operativo / Especialistas</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="employeeRosterTable">
+            <thead>
+              <tr>
+                <th>Colaborador / Cargo</th>
+                <th>Departamento</th>
+                <th>Nivel</th>
+                <th>Autoeval.</th>
+                <th>Pares (Horizontal)</th>
+                <th>Subordinados → Líder</th>
+                <th>Superior → Empleado</th>
+                <th>Prom. Externo</th>
+                <th>Zona Edmondson</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="employeeRosterBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Modal / Panel desplegable de Informe Ejecutivo Organizacional IA -->
+      <div class="card" id="companyDossierCard" style="margin-top:20px" hidden>
+        <div class="card-header">
+          <div>
+            <span class="eyebrow">EXPEDIENTE ORGANIZACIONAL GENERADO POR EL AGENTE IA</span>
+            <h3>Informe Ejecutivo de Cualidades Blandas y Plan Maestro de Intervención</h3>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn sm" id="btnPrintCompanyDossier" type="button">Imprimir / Exportar PDF</button>
+            <button class="btn sm" id="btnCloseCompanyDossier" type="button">Cerrar ×</button>
+          </div>
+        </div>
+        <div class="dossier-box" id="companyDossierContent"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 02: EVALUAR 360° (ENTRE PARES, HACIA SUPERIORES, DESCENDENTE, AUTO)
+         ==================================================================== -->
+    <section id="view-evaluar" role="tabpanel" aria-labelledby="tabBtn-evaluar" hidden>
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">INSTRUMENTO PSICOMÉTRICO BARS (1–5) + EVIDENCIA CONDUCTUAL SBI</span>
+          <h2>Registrar Evaluación 360° de Cualidades Blandas</h2>
+          <p class="section-lede">
+            Seleccione quién realiza la evaluación y a quién evalúa. El sistema ajusta automáticamente el vector relacional (Entre Pares, Subordinado → Gerente/Director, Superior → Subordinado o Autoevaluación) y presenta las escalas ancladas en conductas observables (SIOP / O*NET / Project Oxygen).
+          </p>
+        </div>
+      </div>
+
+      <form id="evaluationForm" class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <h3>1 · Configuración del Vector de Evaluación 360°</h3>
+          <span class="badge accent" id="detectedVectorBadge">Vector: Evaluación Ascendente (Subordinado → Superior)</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:18px">
+          <div>
+            <label class="field-label" for="evalEvaluatorSelect">¿Quién evalúa? (Evaluador)</label>
+            <select id="evalEvaluatorSelect" required></select>
+          </div>
+          <div>
+            <label class="field-label" for="evalTargetSelect">¿A quién se evalúa? (Empleado / Gerente / Director)</label>
+            <select id="evalTargetSelect" required></select>
+          </div>
+          <div>
+            <label class="field-label" for="evalDirectionSelect">Tipo de Relación 360° (Vector)</label>
+            <select id="evalDirectionSelect" required>
+              <option value="UPWARD">Ascendente (UPWARD): Empleado evalúa a Supervisor / Gerente / Director</option>
+              <option value="PEER">Entre Pares (PEER): Compañero evalúa a Compañero (Horizontal)</option>
+              <option value="DOWNWARD">Descendente (DOWNWARD): Gerente / Director evalúa a Subordinado</option>
+              <option value="SELF">Autoevaluación (SELF): Reflexión propia para contraste de puntos ciegos</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="evalAnonSelect">Confidencialidad Psicométrica</label>
+            <select id="evalAnonSelect">
+              <option value="true">Anónima agregada (Recomendado por SHRM / Project Oxygen)</option>
+              <option value="false">Nominal visible en comité de calibración</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="vectorMethodologicalHint" style="padding:12px 14px;border-radius:8px;background:var(--blue-soft);border:1px solid var(--blue-line);color:var(--ink);font-size:13px;margin-bottom:20px"></div>
+
+        <div class="card-header">
+          <div>
+            <h3>2 · Calificación Anclada en Conductas Observables (Escala BARS 1 a 5)</h3>
+            <p style="font-size:12.5px;color:var(--ink-3);margin-top:2px">
+              Toque el nivel conductual (1 a 5) que describa con mayor exactitud lo observado en los últimos 3 meses.
+            </p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="num" id="liveAvgScoreReadout" style="font-weight:600;color:var(--accent)">Promedio: 4.00 / 5.00</span>
+          </div>
+        </div>
+
+        <div id="barsCompetenciesContainer"></div>
+
+        <!-- Bloque 3: Evidencia Cualitativa SBI + Calibrador de IA en Vivo -->
+        <div class="card-header" style="margin-top:22px">
+          <div>
+            <h3>3 · Evidencia Conductual Estructurada (Modelo SBI — Center for Creative Leadership)</h3>
+            <p style="font-size:12.5px;color:var(--ink-3);margin-top:2px">
+              Para que el aporte sea exacto y no dispare defensividad (Kluger & DeNisi, 1996), describa una Situación real, la Conducta observable y su Impacto. Puede escribir un borrador libre y usar el <b>Calibrador del Agente IA</b>.
+            </p>
+          </div>
+        </div>
+
+        <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+            <label class="field-label" for="rawFeedbackDraft" style="margin:0">
+              Asistente IA de Redacción Constructiva (Opcional: escriba su idea en crudo y el Agente IA la convertirá a formato SBI científico)
+            </label>
+            <button class="btn primary sm" id="btnCalibrateSbiAi" type="button">✦ Calibrar con Agente IA (Método SBI + FIT)</button>
+          </div>
+          <textarea id="rawFeedbackDraft" rows="2" placeholder="Ej.: En los cierres de proyecto el gerente interrumpe cuando le explicamos un atraso técnico y cambia las prioridades sin avisar..."></textarea>
+          <div id="sbiAiCalibrationNotice" style="margin-top:8px;font-size:12.5px;color:var(--ok)" hidden></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:16px">
+          <div>
+            <label class="field-label" for="sbiSituationInput">S · Situación (¿Cuándo y en qué contexto ocurrió?)</label>
+            <textarea id="sbiSituationInput" rows="3" required placeholder="Ej.: Durante las reuniones de seguimiento semanal del mes de octubre..."></textarea>
+          </div>
+          <div>
+            <label class="field-label" for="sbiBehaviorInput">B · Conducta Observable (¿Qué dijo o hizo exactamente, sin juicios?)</label>
+            <textarea id="sbiBehaviorInput" rows="3" required placeholder="Ej.: Escuchó las opciones del equipo, verificó los datos y definió las 3 prioridades por escrito..."></textarea>
+          </div>
+          <div>
+            <label class="field-label" for="sbiImpactInput">I · Impacto en el Equipo / Negocio (¿Qué efecto produjo?)</label>
+            <textarea id="sbiImpactInput" rows="3" required placeholder="Ej.: El equipo redujo retrabajos y reportó los riesgos técnicos el mismo día con total confianza..."></textarea>
+          </div>
+        </div>
+
+        <div style="margin-bottom:18px">
+          <label class="field-label" for="sbiGrowthInput"> Compromiso o Sugerencia de Mejora hacia el Futuro (Feedforward — Marshall Goldsmith / CCL)</label>
+          <input type="text" id="sbiGrowthInput" placeholder="Ej.: Abrir 10 minutos al cierre de cada comité para escuchar riesgos operativos antes de fijar la fecha al cliente.">
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line)">
+          <div id="evalSubmitFeedback" style="font-size:13px;color:var(--ok)"></div>
+          <button class="btn primary" id="btnSubmitEvaluation" type="submit">Guardar Evaluación 360° y Actualizar Expediente IA</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 03: EXPEDIENTE IA INDIVIDUAL, VENTANA DE JOHARI Y PLAN 30-60-90
+         ==================================================================== -->
+    <section id="view-reportes" role="tabpanel" aria-labelledby="tabBtn-reportes" hidden>
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">DIAGNÓSTICO PSICOMÉTRICO INDIVIDUAL Y LIDERAZGO 360°</span>
+          <h2>Expediente IA, Ventana de Johari y Plan de Mejora 30-60-90 Días</h2>
+          <p class="section-lede">
+            Seleccione cualquier empleado, supervisor, gerente o director para inspeccionar su radar multifuente, brechas entre autopercepción y observadores externos, evidencias SBI y su Plan de Desarrollo Individual (PDI) fundamentado en literatura científica.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn sm" id="btnSaveEmployeeReport" type="button">Guardar Expediente en Historial</button>
+          <button class="btn primary sm" id="btnPrintEmployeeReport" type="button">Imprimir / Exportar Expediente PDF</button>
+        </div>
+      </div>
+
+      <div class="grid-sidebar">
+        <!-- Columna izquierda: Lista de empleados por nivel jerárquico -->
+        <aside class="card">
+          <div class="card-header">
+            <h3>Plantilla de la Empresa</h3>
+            <span class="badge" id="empSidebarCount">0</span>
+          </div>
+          <div class="emp-list" id="reportEmployeeList"></div>
+        </aside>
+
+        <!-- Columna derecha: Reporte 360° completo del empleado seleccionado -->
+        <div id="employeeReportMainArea" style="display:flex;flex-direction:column;gap:18px"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 04: CONSULTOR AGENTE IA (COPILOTO PSICOMÉTRICO)
+         ==================================================================== -->
+    <section id="view-copiloto" role="tabpanel" aria-labelledby="tabBtn-copiloto" hidden>
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">AGENTE COGNITIVO KIT-GESPRO · RAG CIENTÍFICO VERIFICADO</span>
+          <h2>Consultor de IA en Psicometría Organizacional y Liderazgo</h2>
+          <p class="section-lede">
+            Consulte al Agente de IA sobre puntos ciegos de directores y gerentes, fricciones entre compañeros, diseño de intervenciones o evidencia científica. Todas las respuestas citan las fuentes especializadas que nutren el sistema.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid-sidebar">
+        <aside class="card">
+          <div class="card-header">
+            <h3>Consultas Rápidas Sugeridas</h3>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px" id="quickPromptsList">
+            <button class="btn sm" type="button" data-prompt="Diagnostica el liderazgo ascendente de los gerentes y directores de la empresa">
+              1 · Diagnosticar a Gerentes y Directores (Upward)
+            </button>
+            <button class="btn sm" type="button" data-prompt="Analiza los puntos ciegos y plan de mejora de Diego Morales">
+              2 · Analizar puntos ciegos de Diego Morales
+            </button>
+            <button class="btn sm" type="button" data-prompt="¿Cómo evalúan los subordinados y pares a Sofía Ramírez?">
+              3 · Evaluar liderazgo de Sofía Ramírez
+            </button>
+            <button class="btn sm" type="button" data-prompt="Analiza la relación entre pares de Andrés Vega y cómo mejorar su empatía interdepartamental">
+              4 · Analizar relación entre pares (Andrés Vega)
+            </button>
+            <button class="btn sm" type="button" data-prompt="¿Qué sitios web especializados y estudios científicos fundamentan los reportes de esta aplicación?">
+              5 · Ver respaldo científico y sitios web (RAG)
+            </button>
+          </div>
+
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line)">
+            <span class="eyebrow">REGLAS ÉTICAS DEL AGENTE IA</span>
+            <ul style="padding-left:16px;margin:8px 0 0;font-size:12.5px;color:var(--ink-2);display:flex;flex-direction:column;gap:6px">
+              <li><b>Cero inferencias clínicas:</b> Evalúa únicamente conductas observables en el puesto (O*NET / SIOP).</li>
+              <li><b>Enfoque en la tarea (FIT):</b> Evita juicios sobre el 'yo' que degraden el desempeño (Kluger & DeNisi, 1996).</li>
+              <li><b>Trazabilidad bibliográfica:</b> Cada recomendación cita su fuente verificada.</li>
+            </ul>
+          </div>
+        </aside>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Conversación con el Agente de IA Kit-GesPro</h3>
+            <span class="badge ok">Conectado al Corpus Científico</span>
+          </div>
+
+          <div class="chat-messages" id="aiChatMessages"></div>
+
+          <form id="aiChatForm" style="display:flex;gap:10px">
+            <input type="text" id="aiChatInput" placeholder="Pregunte sobre un empleado, gerente, director o estrategia de mejora conductual..." required>
+            <button class="btn primary" type="submit">Consultar IA</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 05: BASE CIENTÍFICA Y SITIOS ESPECIALIZADOS (NUTRIDOR WEB RAG)
+         ==================================================================== -->
+    <section id="view-fuentes" role="tabpanel" aria-labelledby="tabBtn-fuentes" hidden>
+      <div class="section-header">
+        <div>
+          <span class="eyebrow">NUTRIDOR CIENTÍFICO VERIFICADO · O*NET · CREIO · GOOGLE RE:WORK · HBS · CCL · SIOP</span>
+          <h2>Sitios Web Especializados y Literatura Científica que Nutren a la IA</h2>
+          <p class="section-lede">
+            El Agente de IA de Kit-GesPro fundamenta cada escala BARS, cada matriz de Ventana de Johari y cada Plan 30-60-90 en fuentes institucionales y meta-analíticas verificadas. Puede inspeccionar cada fuente o agregar nuevos sitios web especializados en tiempo real.
+          </p>
+        </div>
+      </div>
+
+      <!-- Formulario para nutrir la aplicación con nuevos sitios web especializados -->
+      <div class="card" style="margin-bottom:22px">
+        <div class="card-header">
+          <div>
+            <span class="eyebrow">INGESTOR WEB EN VIVO (RAG HARVESTER)</span>
+            <h3>Nutrir al Agente de IA con un Nuevo Sitio Web Especializado</h3>
+          </div>
+          <span class="badge blue" id="totalSourcesCountBadge">12 sitios indexados</span>
+        </div>
+
+        <form id="ingestSourceForm" style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:12px;align-items:end">
+          <div>
+            <label class="field-label" for="sourceUrlInput">URL del Sitio Especializado o Estudio Científico</label>
+            <input type="url" id="sourceUrlInput" placeholder="https://www.onetonline.org/skills/soft/ o https://www.ccl.org/..." required>
+          </div>
+          <div>
+            <label class="field-label" for="sourceCategoryInput">Categoría Metodológica</label>
+            <select id="sourceCategoryInput">
+              <option value="LIDERAZGO_ASCENDENTE">Liderazgo Ascendente (Gerentes/Directores)</option>
+              <option value="FEEDBACK_360">Evaluación 360° y Método SBI</option>
+              <option value="SEGURIDAD_PSICOLOGICA">Seguridad Psicológica y Clima</option>
+              <option value="INTELIGENCIA_EMOCIONAL">Inteligencia Emocional y Empatía</option>
+              <option value="TAXONOMIA">Taxonomía de Cualidades Blandas</option>
+              <option value="PSICOMETRIA_BARS">Psicometría y Escalas BARS</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="sourceNotesInput">Aporte Metodológico Clave (Opcional)</label>
+            <input type="text" id="sourceNotesInput" placeholder="Ej.: Guía SHRM / Gallup sobre conversaciones de coaching y feedback continuo">
+          </div>
+          <button class="btn primary" type="submit" id="btnIngestSource">Nutrir Agente IA</button>
+        </form>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
+          <span style="font-size:12px;color:var(--ink-3)">Sitios sugeridos para indexar con un clic:</span>
+          <button class="btn sm" type="button" data-quick-url="https://www.onetonline.org/help/online/skills" data-quick-cat="TAXONOMIA" data-quick-note="Guía metodológica oficial de O*NET sobre evaluación de habilidades transferibles y blandas en el trabajo.">
+            + O*NET Skills Guide
+          </button>
+          <button class="btn sm" type="button" data-quick-url="https://www.eiconsortium.org/reports/guidelines.html" data-quick-cat="INTELIGENCIA_EMOCIONAL" data-quick-note="Guidelines for Best Practice del Consortium for Research on Emotional Intelligence in Organizations (Rutgers University) para programas de desarrollo socioemocional.">
+            + CREIO Best Practice Guidelines
+          </button>
+          <button class="btn sm" type="button" data-quick-url="https://psychsafety.com/measure-psychological-safety/" data-quick-cat="SEGURIDAD_PSICOLOGICA" data-quick-note="Guía de medición y matriz de Seguridad Psicológica en equipos de trabajo basada en la escala de 7 ítems de Amy Edmondson.">
+            + PsychSafety Measurement Guide
+          </button>
+        </div>
+        <div id="ingestStatusMsg" style="margin-top:10px;font-size:13px;color:var(--ok)" hidden></div>
+      </div>
+
+      <!-- Catálogo de fuentes verificadas -->
+      <div class="source-grid" id="sourcesCatalogGrid"></div>
+    </section>
+  </main>
+
+  <!-- Modal para dar de alta nuevo Empleado / Supervisor / Gerente / Director -->
+  <div id="modalNewEmployee" style="position:fixed;inset:0;background:rgba(13,15,18,0.62);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px" hidden>
+    <div class="card" style="max-width:540px;width:100%">
+      <div class="card-header">
+        <h3>Alta de Colaborador, Gerente o Director en Plantilla 360°</h3>
+        <button class="btn sm" id="btnCloseEmployeeModal" type="button">✕</button>
+      </div>
+      <form id="newEmployeeForm" style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="field-label" for="newEmpName">Nombre Completo</label>
+          <input type="text" id="newEmpName" placeholder="Ej.: Ing. Carlos Mendoza" required>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="field-label" for="newEmpTitle">Cargo / Puesto</label>
+            <input type="text" id="newEmpTitle" placeholder="Ej.: Gerente de Logística" required>
+          </div>
+          <div>
+            <label class="field-label" for="newEmpDept">Departamento / Área</label>
+            <input type="text" id="newEmpDept" placeholder="Ej.: Operaciones y Suministro" required>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="field-label" for="newEmpLevel">Nivel Jerárquico</label>
+            <select id="newEmpLevel" required>
+              <option value="OPERATIVO">Operativo / Especialista</option>
+              <option value="SUPERVISION">Supervisión / Coordinación</option>
+              <option value="GERENCIA">Gerencia de Área</option>
+              <option value="DIRECCION">Dirección / Alta Gerencia</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="newEmpManager">Reporta a (Superior Directo)</label>
+            <select id="newEmpManager"></select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label" for="newEmpMission">Misión Principal del Puesto</label>
+          <textarea id="newEmpMission" rows="2" placeholder="Ej.: Garantizar el abastecimiento oportuno y coordinar el equipo de almacén y despacho."></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
+          <button class="btn" type="button" id="btnCancelEmployeeModal">Cancelar</button>
+          <button class="btn primary" type="submit">Registrar en la Empresa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "kit-gespro-cualidades-blandas",
+  "version": "1.0.0",
+  "description": "Kit-GesPro (GP-13) — Sistema de Evaluación 360° de Cualidades Blandas y Liderazgo con Agente de IA basado en Evidencia Científica",
+  "type": "module",
+  "main": "src/server.mjs",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node src/server.mjs",
+    "seed": "node src/seed.mjs",
+    "test": "node pruebas/verificar-sistema.mjs",
+    "build:standalone": "node scripts/build-standalone.mjs"
+  },
+  "author": "J@RTechnologies · Ecosistema GesPro",
+  "license": "UNLICENSED"
+}
