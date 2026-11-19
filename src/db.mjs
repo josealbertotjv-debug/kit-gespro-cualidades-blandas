@@ -50,10 +50,8 @@ async function createPostgresDriver() {
     connectionString: config.databaseUrl,
     max: config.databasePoolMax,
     ssl: config.databaseSsl ? { rejectUnauthorized: config.databaseSslRejectUnauthorized } : undefined,
-    application_name: "kit-gespro-gp13"
-  });
-  pool.on("connect", (client) => {
-    client.query("SET search_path TO kit, public");
+    application_name: "kit-gespro-gp13",
+    options: "-c search_path=kit,public"
   });
   pool.on("error", (err) => {
     console.error("[db] Error inesperado en cliente PostgreSQL inactivo:", err.message);
