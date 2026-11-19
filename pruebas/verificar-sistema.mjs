@@ -4,6 +4,7 @@
 
 import assert from "node:assert/strict";
 import { server } from "../src/server.mjs";
+import { closeDatabase } from "../src/db.mjs";
 
 const TEST_PORT = 4599;
 
@@ -127,9 +128,35 @@ async function runTests() {
     assert.equal(ingData.ok, true);
     assert.equal(ingData.source.domain, "onetonline.org");
 
-    console.log("✓ TODAS LAS PRUEBAS DE KIT-GESPRO (GP-13 CUALIDADES BLANDAS 360° + AGENTE IA) PASARON EXITOSAMENTE.");
+    console.log("8. Verificando health check (/healthz)...");
+    const healthRes = await fetch(`${baseUrl}/healthz`);
+    assert.equal(healthRes.status, 200);
+    const health = await healthRes.json();
+    assert.equal(health.ok, true);
+    assert.ok(["sqlite", "postgres"].includes(health.database));
+
+    console.log("9. Verificando defensa anti-SSRF del ingestor (metadatos de la nube / red privada)...");
+    for (const blockedUrl of ["http://169.254.169.254/latest/meta-data/", "http://127.0.0.1:4599/healthz", "file:///etc/passwd"]) {
+      const ssrfRes = await fetch(`${baseUrl}/api/sources/ingest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: blockedUrl, category: "TAXONOMIA" })
+      });
+      assert.equal(ssrfRes.status, 400, `Debe rechazar ${blockedUrl}`);
+    }
+
+    console.log("10. Verificando cabeceras de seguridad y 404 de API...");
+    const rootRes = await fetch(`${baseUrl}/`);
+    assert.equal(rootRes.status, 200);
+    assert.ok(rootRes.headers.get("content-security-policy")?.includes("default-src 'self'"));
+    assert.equal(rootRes.headers.get("x-content-type-options"), "nosniff");
+    const missingRes = await fetch(`${baseUrl}/api/no-existe`);
+    assert.equal(missingRes.status, 404);
+
+    console.log(`✓ TODAS LAS PRUEBAS DE KIT-GESPRO (GP-13 CUALIDADES BLANDAS 360° + AGENTE IA) PASARON EXITOSAMENTE · BD: ${health.database}.`);
   } finally {
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
+    await closeDatabase();
   }
 }
 

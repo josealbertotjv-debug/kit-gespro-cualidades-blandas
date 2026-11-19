@@ -897,13 +897,19 @@ Puedes preguntarme por el nombre de cualquier empleado, gerente o director (por 
 /**
  * Ingestor de Sitios Web Especializados en Vivo (RAG Harvester).
  * Extrae título, resumen y reglas metodológicas de cualquier URL especializada en recursos humanos / psicometría.
+ * `options.fetchImpl` permite inyectar un fetch protegido (el servidor Node usa uno con defensa anti-SSRF);
+ * la versión autónoma en navegador usa el fetch global.
  */
-export async function ingestSpecializedWebsite(url, category = "FEEDBACK_360", customNotes = "") {
+export async function ingestSpecializedWebsite(url, category = "FEEDBACK_360", customNotes = "", options = {}) {
+  const fetchImpl = options.fetchImpl || fetch;
   let parsedUrl;
   try {
     parsedUrl = new URL(url);
   } catch {
     throw new Error("La URL proporcionada no tiene un formato válido (debe iniciar con https:// o http://).");
+  }
+  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+    throw new Error("Solo se admiten URLs con protocolo https:// o http://.");
   }
 
   const domain = parsedUrl.hostname.replace(/^www\./, "");
@@ -913,7 +919,7 @@ export async function ingestSpecializedWebsite(url, category = "FEEDBACK_360", c
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6500);
-    const res = await fetch(parsedUrl.toString(), {
+    const res = await fetchImpl(parsedUrl.toString(), {
       signal: controller.signal,
       headers: {
         "User-Agent": "KitGesPro-Psychometric-Agent/2.0 (+https://gespro.ai)"

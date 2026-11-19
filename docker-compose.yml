@@ -1,0 +1,43 @@
+# =============================================================================
+# Kit-GesPro (GP-13) · Despliegue en servidor Vultr
+#   docker compose pull && docker compose up -d
+# La app solo escucha en 127.0.0.1; Nginx (deploy/nginx) la publica con HTTPS.
+# =============================================================================
+services:
+  kit-cualidades-blandas:
+    image: ${IMAGE:-ghcr.io/josealbertotjv-debug/kit-gespro-cualidades-blandas:latest}
+    build: .
+    container_name: kit-gespro-gp13
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4500
+    ports:
+      - "127.0.0.1:${HOST_PORT:-4500}:4500"
+    # Permite alcanzar un PostgreSQL que corre en el host (fuera de Docker) como host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Solo se usa si DATABASE_URL está vacío (SQLite)
+      - gp13-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # Si PostgreSQL de gespro-costos corre en otra red de Docker, únase a ella:
+    # networks: [default, gespro]
+
+volumes:
+  gp13-data:
+
+# networks:
+#   gespro:
+#     external: true
+#     name: gespro-costos_default
