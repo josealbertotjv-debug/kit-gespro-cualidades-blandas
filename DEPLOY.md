@@ -12,6 +12,17 @@ flowchart LR
   R --> A
 ```
 
+## 0. Despliegue con un clic (recomendado)
+
+Solo se necesita el secreto **`VULTR_API_KEY`** en GitHub (Vultr → Account → API → *Enable API* + *Allow All IPv4*). Luego, en **Actions → "Desplegar en Vultr (servidor dedicado)" → Run workflow**, el workflow:
+
+1. Localiza la Managed Database PostgreSQL de GesPro y la BD lógica de gespro-costos.
+2. Crea (o reutiliza) el servidor dedicado `kit-gespro-gp13` (plan más pequeño disponible, Ubuntu 24.04, misma región que la BD).
+3. Agrega la IP del servidor a *Trusted Sources* de la base de datos.
+4. Instala Docker, crea el rol `kit_gp13`, levanta la app, Nginx y HTTPS gratuito en `https://<ip>.sslip.io` (o en `vars.APP_DOMAIN` si se define).
+
+El resumen de la ejecución muestra la URL final. Se puede volver a ejecutar sin riesgo. Las secciones siguientes describen el proceso manual equivalente.
+
 ## 1. Requisitos en el servidor Vultr
 
 - Ubuntu 22.04/24.04 con **Docker Engine + plugin Compose** (`docker compose version`).

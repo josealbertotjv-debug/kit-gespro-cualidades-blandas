@@ -1,0 +1,115 @@
+# =============================================================================
+# Kit-GesPro (GP-13) · Despliegue completo en Vultr con un clic
+#   1. API de Vultr: localiza la Managed Database, crea (o reutiliza) el servidor
+#      dedicado "kit-gespro-gp13" y autoriza su IP en Trusted Sources.
+#   2. SSH: Docker, rol kit_gp13, app, Nginx y HTTPS (https://<ip>.sslip.io).
+# Idempotente: se puede volver a ejecutar sin crear servidores duplicados.
+#
+# Secrets: VULTR_API_KEY, VULTR_SSH_KEY, KIT_DB_PASSWORD, BASIC_AUTH_PASSWORD
+# Variables opcionales: DB_LABEL, DB_NAME, VULTR_REGION, VULTR_PLAN, APP_DOMAIN
+# =============================================================================
+name: Desplegar en Vultr (servidor dedicado)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: vultr-provision
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    name: Servidor + BD + App + HTTPS
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Preparar llave SSH
+        id: ssh
+        env:
+          SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          echo "pub=$(ssh-keygen -y -f ~/.ssh/id_ed25519)" >> "$GITHUB_OUTPUT"
+
+      - name: "Vultr API: base de datos, servidor y Trusted Sources"
+        id: vultr
+        env:
+          VULTR_API_KEY: ${{ secrets.VULTR_API_KEY }}
+          SSH_PUBLIC_KEY: ${{ steps.ssh.outputs.pub }}
+          DB_LABEL: ${{ vars.DB_LABEL }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          VULTR_REGION: ${{ vars.VULTR_REGION }}
+          VULTR_PLAN: ${{ vars.VULTR_PLAN }}
+        run: node deploy/vultr-provision.mjs
+
+      - name: Esperar SSH del servidor
+        env:
+          HOST: ${{ steps.vultr.outputs.host }}
+        run: |
+          for i in $(seq 1 60); do
+            if ssh-keyscan -T 5 "$HOST" 2>/dev/null | grep -q ssh-ed25519; then
+              ssh-keyscan -T 5 "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+              ssh -o BatchMode=yes -o ConnectTimeout=10 "root@$HOST" 'echo "SSH OK: $(hostname) · $(. /etc/os-release; echo $PRETTY_NAME)"' && exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::El servidor $HOST no aceptó SSH a tiempo."; exit 1
+
+      - name: Aprovisionar servidor (Docker, BD, App, Nginx, HTTPS)
+        env:
+          HOST: ${{ steps.vultr.outputs.host }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN || steps.vultr.outputs.domain }}
+          LETSENCRYPT_EMAIL: ${{ steps.vultr.outputs.email }}
+          DB_ADMIN_URL: ${{ steps.vultr.outputs.db_admin_url }}
+          DB_HOST: ${{ steps.vultr.outputs.db_host }}
+          DB_PORT: ${{ steps.vultr.outputs.db_port }}
+          DB_NAME: ${{ steps.vultr.outputs.db_name }}
+          KIT_DB_PASSWORD: ${{ secrets.KIT_DB_PASSWORD }}
+          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:latest"
+          BUNDLE_DIR="/tmp/gp13-bundle"
+          APP_DIR="/opt/gespro/kit-cualidades-blandas"
+          ssh "root@$HOST" "rm -rf $BUNDLE_DIR && mkdir -p $BUNDLE_DIR"
+          scp docker-compose.yml deploy/nginx/kit-cualidades-blandas.conf deploy/bootstrap-server.sh deploy/provision-db.sql "root@$HOST:$BUNDLE_DIR/"
+          {
+            for v in APP_DOMAIN LETSENCRYPT_EMAIL APP_DIR DB_ADMIN_URL DB_HOST DB_PORT DB_NAME KIT_DB_PASSWORD BASIC_AUTH_PASSWORD GHCR_USER GHCR_TOKEN IMAGE BUNDLE_DIR; do
+              printf 'export %s=%q\n' "$v" "${!v}"
+            done
+            echo "bash $BUNDLE_DIR/bootstrap-server.sh; rc=\$?; rm -rf $BUNDLE_DIR; exit \$rc"
+          } | ssh "root@$HOST" 'bash -s' 2>&1 | tee /tmp/bootstrap.log
+          test "${PIPESTATUS[1]}" -eq 0
+
+      - name: Verificación externa
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN || steps.vultr.outputs.domain }}
+          HOST: ${{ steps.vultr.outputs.host }}
+        run: |
+          URL="https://$APP_DOMAIN"
+          curl -fsS --max-time 15 "$URL/healthz" || { URL="http://$APP_DOMAIN"; curl -fsS --max-time 15 "$URL/healthz"; }
+          echo
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/")
+          echo "Sin credenciales → HTTP $code (esperado 401)"
+          {
+            echo "## ✅ Kit-GesPro GP-13 desplegado"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| URL | $URL |"
+            echo "| Servidor | \`$HOST\` (kit-gespro-gp13) |"
+            echo "| Usuario | \`gespro\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "APP_URL=$URL"

@@ -22,17 +22,27 @@ log()  { echo -e "\n==> $*"; }
 warn() { echo "::warning::$*"; }
 fail() { echo "::error::$*"; exit 1; }
 
-for v in APP_DOMAIN LETSENCRYPT_EMAIL IMAGE GHCR_USER GHCR_TOKEN DB_ADMIN_URL DB_HOST DB_PORT DB_NAME KIT_DB_PASSWORD BASIC_AUTH_PASSWORD BUNDLE_DIR; do
+for v in APP_DOMAIN LETSENCRYPT_EMAIL IMAGE GHCR_USER GHCR_TOKEN BASIC_AUTH_PASSWORD BUNDLE_DIR; do
   [ -n "${!v:-}" ] || fail "Falta la variable $v"
 done
+if [ -n "${DB_ADMIN_URL:-}" ]; then
+  for v in DB_HOST DB_PORT DB_NAME KIT_DB_PASSWORD; do
+    [ -n "${!v:-}" ] || fail "Falta la variable $v"
+  done
+fi
 [ "$(id -u)" -eq 0 ] || fail "Este script debe ejecutarse como root (o con sudo)."
 [ -f /etc/os-release ] && . /etc/os-release
 command -v apt-get >/dev/null || fail "Se requiere una distribución basada en Debian/Ubuntu (apt). Detectado: ${PRETTY_NAME:-desconocido}"
 export DEBIAN_FRONTEND=noninteractive
+# Servidores recién creados: esperar a cloud-init y no chocar con unattended-upgrades
+command -v cloud-init >/dev/null && timeout 600 cloud-init status --wait >/dev/null 2>&1 || true
+APT="apt-get -o DPkg::Lock::Timeout=600 -y -qq"
 
 # ── 1. Docker ────────────────────────────────────────────────────────────────
 log "1/6 Docker"
 if ! command -v docker >/dev/null; then
+  $APT update
+  $APT install ca-certificates curl
   curl -fsSL https://get.docker.com | sh
 fi
 systemctl enable --now docker >/dev/null 2>&1 || true
@@ -47,13 +57,25 @@ if ss -ltnH "sport = :${HOST_PORT}" | grep -q . && ! docker ps --format '{{.Name
 fi
 
 # ── 3. Rol PostgreSQL (Managed Database) ─────────────────────────────────────
-log "3/6 PostgreSQL · rol kit_gp13 y esquema kit en ${DB_HOST}:${DB_PORT}/${DB_NAME}"
-docker run --rm -i \
-  -e PGCONNECT_TIMEOUT=15 \
-  postgres:16-alpine \
-  psql "$DB_ADMIN_URL" -v ON_ERROR_STOP=1 -q \
-       -v pw="$KIT_DB_PASSWORD" -v dbname="$DB_NAME" -f - < "$BUNDLE_DIR/provision-db.sql" \
-  || fail "No se pudo configurar PostgreSQL. Verifique DB_ADMIN_URL y que la IP de este servidor esté en 'Trusted Sources' de la Managed Database."
+if [ -n "${DB_ADMIN_URL:-}" ]; then
+  log "3/6 PostgreSQL · rol kit_gp13 y esquema kit en ${DB_HOST}:${DB_PORT}/${DB_NAME}"
+  docker pull -q postgres:16-alpine >/dev/null
+  db_ok=""
+  for attempt in 1 2 3 4 5 6 7 8; do
+    if docker run --rm -i -e PGCONNECT_TIMEOUT=15 postgres:16-alpine \
+         psql "$DB_ADMIN_URL" -v ON_ERROR_STOP=1 -q \
+              -v pw="$KIT_DB_PASSWORD" -v dbname="$DB_NAME" -f - < "$BUNDLE_DIR/provision-db.sql"; then
+      db_ok=1; break
+    fi
+    echo "  intento ${attempt}/8 fallido (Vultr puede tardar en aplicar Trusted Sources); reintentando en 20 s…"
+    sleep 20
+  done
+  [ -n "$db_ok" ] || fail "No se pudo configurar PostgreSQL. Verifique la Managed Database y que la IP de este servidor esté en 'Trusted Sources'."
+  DATABASE_URL_VALUE="postgresql://kit_gp13:${KIT_DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+else
+  log "3/6 Sin Managed Database: la app usará SQLite persistente (volumen Docker gp13-data)"
+  DATABASE_URL_VALUE=""
+fi
 
 # ── 4. App (Docker Compose) ──────────────────────────────────────────────────
 log "4/6 App en ${APP_DIR}"
@@ -66,7 +88,7 @@ cat > "$APP_DIR/.env" <<EOF
 NODE_ENV=production
 HOST=0.0.0.0
 PORT=4500
-DATABASE_URL=postgresql://kit_gp13:${KIT_DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+DATABASE_URL=${DATABASE_URL_VALUE}
 DATABASE_SSL=${DB_SSL}
 # Vultr Managed Database usa una CA propia; el canal va cifrado (TLS) igualmente.
 DATABASE_SSL_REJECT_UNAUTHORIZED=false
@@ -102,11 +124,11 @@ if ! command -v nginx >/dev/null; then
     ss -ltnp "sport = :80" || true
     fail "El puerto 80 lo usa otro servidor web (no Nginx). Configure el proxy hacia 127.0.0.1:${HOST_PORT} manualmente."
   fi
-  apt-get update -qq
-  apt-get install -y -qq nginx
+  $APT update
+  $APT install nginx
 fi
-command -v certbot >/dev/null || { apt-get update -qq; apt-get install -y -qq certbot python3-certbot-nginx; }
-dpkg -s python3-certbot-nginx >/dev/null 2>&1 || apt-get install -y -qq python3-certbot-nginx
+command -v certbot >/dev/null || { $APT update; $APT install certbot python3-certbot-nginx; }
+dpkg -s python3-certbot-nginx >/dev/null 2>&1 || $APT install python3-certbot-nginx
 
 SITE=/etc/nginx/sites-available/kit-cualidades-blandas.conf
 sed -e "s/cualidades\.gespro\.ejemplo\.com/${APP_DOMAIN}/g" \
