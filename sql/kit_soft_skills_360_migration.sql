@@ -109,6 +109,20 @@ CREATE TABLE IF NOT EXISTS kit.soft_skill_ai_reports (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 7. Catálogo de empresas del ecosistema GesPro habilitadas para GP-13
+--    (id = "gesproCompanyId" = public.companies.id en gespro-costos / auditoria-estrategica)
+CREATE TABLE IF NOT EXISTS kit.soft_skill_companies (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    industry TEXT NOT NULL,
+    country TEXT NOT NULL,
+    description TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. Evolución de esquema (idempotente) para instalaciones previas
+ALTER TABLE kit.soft_skill_competencies ADD COLUMN IF NOT EXISTS "clusterLabel" TEXT NOT NULL DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS idx_soft_skill_emp_company ON kit.soft_skill_employees("gesproCompanyId");
 CREATE INDEX IF NOT EXISTS idx_soft_skill_eval_target ON kit.soft_skill_evaluations("targetId", "cycleId");
 CREATE INDEX IF NOT EXISTS idx_soft_skill_eval_company ON kit.soft_skill_evaluations("gesproCompanyId", "cycleId");

@@ -1,0 +1,129 @@
+# =============================================================================
+# Kit-GesPro (GP-13) · CI/CD
+#   1. Pruebas con SQLite y con PostgreSQL 16 (esquema kit)
+#   2. Imagen Docker → GHCR (ghcr.io/<owner>/kit-gespro-cualidades-blandas)
+#   3. Despliegue por SSH al servidor Vultr (opcional: requiere vars.DEPLOY_ENABLED=true + secretos)
+# =============================================================================
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-sqlite:
+    name: Pruebas · SQLite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+        env:
+          SQLITE_PATH: ${{ runner.temp }}/gp13-ci.db
+      - name: Build versión autónoma
+        run: npm run build:standalone
+
+  test-postgres:
+    name: Pruebas · PostgreSQL 16 (esquema kit)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: gespro
+          POSTGRES_PASSWORD: gespro
+          POSTGRES_DB: gespro_costos
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U gespro -d gespro_costos"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://gespro:gespro@localhost:5432/gespro_costos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Migración (npm run migrate)
+        run: npm run migrate
+      - name: Pruebas de API sobre PostgreSQL
+        run: npm test
+      - name: Re-ejecución (migración y semilla idempotentes)
+        run: npm run migrate && npm test
+
+  docker:
+    name: Imagen Docker → GHCR
+    needs: [test-sqlite, test-postgres]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.vars.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: vars
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.vars.outputs.image }}:latest
+            ${{ steps.vars.outputs.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test de la imagen
+        run: |
+          docker run -d --name gp13 -p 4500:4500 ${{ steps.vars.outputs.image }}:${{ github.sha }}
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4500/healthz && exit 0; sleep 1; done
+          docker logs gp13; exit 1
+
+  deploy:
+    name: Despliegue · Vultr
+    needs: docker
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VULTR_HOST }}
+          username: ${{ secrets.VULTR_USER }}
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          port: ${{ secrets.VULTR_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd "${{ vars.DEPLOY_PATH || '/opt/gespro/kit-cualidades-blandas' }}"
+            docker compose pull
+            docker compose up -d --remove-orphans
+            APP_PORT=$(grep -E '^HOST_PORT=' .env | cut -d= -f2 || true)
+            APP_PORT=${APP_PORT:-4500}
+            for i in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz"; then exit 0; fi
+              sleep 2
+            done
+            docker compose logs --tail 100
+            exit 1

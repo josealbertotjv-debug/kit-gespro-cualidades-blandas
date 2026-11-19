@@ -27,10 +27,10 @@ El Agente de IA está alimentado con 12+ fuentes institucionales y meta-analíti
 
 ```bash
 # Iniciar servidor en puerto 4500
-cd /home/antigravity/kit-gespro-cualidades-blandas && npm start
+npm install && npm start
 
 # Ejecutar suite de pruebas psicométricas y de API
-cd /home/antigravity/kit-gespro-cualidades-blandas && npm test
+npm test
 ```
 
 ### Versión autónoma (un solo archivo, sin servidor)
@@ -49,4 +49,20 @@ Chrome o Edge, y trae un botón **"Restablecer datos demo"**.
 
 ## 4. Integración con PostgreSQL (`esquema kit` de `gespro-costos`)
 
-El archivo [`sql/kit_soft_skills_360_migration.sql`](sql/kit_soft_skills_360_migration.sql) contiene la migración SQL completa bajo el esquema `kit` (`kit.soft_skill_sources`, `kit.soft_skill_competencies`, `kit.soft_skill_employees`, `kit.soft_skill_cycles`, `kit.soft_skill_evaluations`, `kit.soft_skill_ai_reports`) vinculada por `"gesproCompanyId"` con las empresas de `auditoria-estrategica` y `gespro-costos`.
+El archivo [`sql/kit_soft_skills_360_migration.sql`](sql/kit_soft_skills_360_migration.sql) contiene la migración SQL completa bajo el esquema `kit` (`kit.soft_skill_companies`, `kit.soft_skill_sources`, `kit.soft_skill_competencies`, `kit.soft_skill_employees`, `kit.soft_skill_cycles`, `kit.soft_skill_evaluations`, `kit.soft_skill_ai_reports`) vinculada por `"gesproCompanyId"` con las empresas de `auditoria-estrategica` y `gespro-costos`.
+
+El servidor elige el motor automáticamente:
+
+| `DATABASE_URL` | Motor | Uso |
+|---|---|---|
+| definida | **PostgreSQL** (esquema `kit`, migración idempotente al arrancar) | Producción |
+| vacía | SQLite (`data/kit-cualidades-blandas.db`) | Desarrollo y pruebas |
+
+```bash
+DATABASE_URL=postgresql://usuario:clave@host:5432/gespro_costos npm run migrate   # aplica esquema + catálogos
+DATABASE_URL=postgresql://usuario:clave@host:5432/gespro_costos npm test          # pruebas sobre PostgreSQL
+```
+
+## 5. Producción (Vultr · Docker · GitHub Actions)
+
+Imagen Docker, `docker-compose.yml`, Nginx, variables de entorno ([`.env.example`](.env.example)), health check `/healthz` y CI/CD con despliegue por SSH. Todos los pasos están en **[DEPLOY.md](DEPLOY.md)**.
