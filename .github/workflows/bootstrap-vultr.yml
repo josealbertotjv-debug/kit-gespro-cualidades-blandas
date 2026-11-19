@@ -1,0 +1,77 @@
+# =============================================================================
+# Kit-GesPro (GP-13) · Aprovisionamiento del servidor Vultr (manual, idempotente)
+# Ejecuta deploy/bootstrap-server.sh vía SSH: Docker, rol PostgreSQL, app, Nginx y HTTPS.
+#
+# Secrets: VULTR_HOST, VULTR_USER, VULTR_SSH_KEY, [VULTR_SSH_PORT],
+#          DB_ADMIN_URL, KIT_DB_PASSWORD, BASIC_AUTH_PASSWORD
+# Variables: APP_DOMAIN, LETSENCRYPT_EMAIL, [DB_NAME], [DEPLOY_PATH], [HOST_PORT]
+# =============================================================================
+name: Bootstrap servidor Vultr
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  bootstrap:
+    name: Aprovisionar Vultr
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SSH_HOST: ${{ secrets.VULTR_HOST }}
+      SSH_USER: ${{ secrets.VULTR_USER }}
+      SSH_PORT: ${{ secrets.VULTR_SSH_PORT || '22' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar SSH
+        env:
+          SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$SSH_PORT" -T 15 "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -p "$SSH_PORT" -o BatchMode=yes "$SSH_USER@$SSH_HOST" 'echo "SSH OK: $(hostname) · $(. /etc/os-release; echo $PRETTY_NAME) · usuario $(id -un)"'
+
+      - name: Derivar parámetros de la base de datos
+        id: db
+        env:
+          DB_ADMIN_URL: ${{ secrets.DB_ADMIN_URL }}
+          DB_NAME_OVERRIDE: ${{ vars.DB_NAME }}
+        run: |
+          node -e '
+            const u = new URL(process.env.DB_ADMIN_URL);
+            const name = process.env.DB_NAME_OVERRIDE || decodeURIComponent(u.pathname.slice(1)) || "defaultdb";
+            const fs = require("fs");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `host=${u.hostname}\nport=${u.port || 5432}\nname=${name}\n`);
+            console.log(`BD destino: ${u.hostname}:${u.port || 5432}/${name}`);
+          '
+
+      - name: Ejecutar aprovisionamiento en el servidor
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
+          APP_DIR: ${{ vars.DEPLOY_PATH || '/opt/gespro/kit-cualidades-blandas' }}
+          HOST_PORT: ${{ vars.HOST_PORT || '4500' }}
+          DB_ADMIN_URL: ${{ secrets.DB_ADMIN_URL }}
+          DB_HOST: ${{ steps.db.outputs.host }}
+          DB_PORT: ${{ steps.db.outputs.port }}
+          DB_NAME: ${{ steps.db.outputs.name }}
+          KIT_DB_PASSWORD: ${{ secrets.KIT_DB_PASSWORD }}
+          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:latest"
+          BUNDLE_DIR="/tmp/gp13-bundle"
+          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "rm -rf $BUNDLE_DIR && mkdir -p $BUNDLE_DIR"
+          scp -P "$SSH_PORT" docker-compose.yml deploy/nginx/kit-cualidades-blandas.conf deploy/bootstrap-server.sh deploy/provision-db.sql "$SSH_USER@$SSH_HOST:$BUNDLE_DIR/"
+          {
+            for v in APP_DOMAIN LETSENCRYPT_EMAIL APP_DIR HOST_PORT DB_ADMIN_URL DB_HOST DB_PORT DB_NAME KIT_DB_PASSWORD BASIC_AUTH_PASSWORD GHCR_USER GHCR_TOKEN IMAGE BUNDLE_DIR; do
+              printf 'export %s=%q\n' "$v" "${!v}"
+            done
+            echo "bash $BUNDLE_DIR/bootstrap-server.sh; rc=\$?; rm -rf $BUNDLE_DIR; exit \$rc"
+          } | ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'if [ "$(id -u)" -eq 0 ]; then bash -s; else sudo -n bash -s; fi'

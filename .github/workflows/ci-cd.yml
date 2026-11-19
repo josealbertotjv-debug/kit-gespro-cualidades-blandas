@@ -65,6 +65,15 @@ jobs:
         run: npm test
       - name: Re-ejecución (migración y semilla idempotentes)
         run: npm run migrate && npm test
+      - name: Rol de mínimos privilegios kit_gp13 (deploy/provision-db.sql) en BD nueva
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE gp13_lp"
+          for i in 1 2; do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -v pw=ci_kit_pw -v dbname=gp13_lp -f deploy/provision-db.sql
+          done
+          export DATABASE_URL=postgresql://kit_gp13:ci_kit_pw@localhost:5432/gp13_lp
+          test "$(psql "$DATABASE_URL" -Atc 'select current_user')" = kit_gp13
+          npm run migrate && npm test
 
   docker:
     name: Imagen Docker → GHCR
@@ -107,23 +116,33 @@ jobs:
     if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_DIR: ${{ vars.DEPLOY_PATH || '/opt/gespro/kit-cualidades-blandas' }}
         with:
           host: ${{ secrets.VULTR_HOST }}
           username: ${{ secrets.VULTR_USER }}
           key: ${{ secrets.VULTR_SSH_KEY }}
           port: ${{ secrets.VULTR_SSH_PORT || 22 }}
+          envs: GHCR_USER,GHCR_TOKEN,APP_DIR
           script: |
             set -e
-            cd "${{ vars.DEPLOY_PATH || '/opt/gespro/kit-cualidades-blandas' }}"
-            docker compose pull
-            docker compose up -d --remove-orphans
-            APP_PORT=$(grep -E '^HOST_PORT=' .env | cut -d= -f2 || true)
+            SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
+            cd "$APP_DIR"
+            echo "$GHCR_TOKEN" | $SUDO docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+            $SUDO docker compose pull
+            $SUDO docker compose up -d --remove-orphans
+            APP_PORT=$($SUDO grep -E '^HOST_PORT=' .env | cut -d= -f2 || true)
             APP_PORT=${APP_PORT:-4500}
             for i in $(seq 1 30); do
-              if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz"; then exit 0; fi
+              if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz"; then $SUDO docker image prune -f >/dev/null; exit 0; fi
               sleep 2
             done
-            docker compose logs --tail 100
+            $SUDO docker compose logs --tail 100
             exit 1

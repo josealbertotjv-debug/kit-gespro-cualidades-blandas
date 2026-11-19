@@ -3,7 +3,15 @@
 -- Esquema PostgreSQL compatible con josealbertotjv-debug/gespro-costos (schema kit)
 -- =============================================================================
 
-CREATE SCHEMA IF NOT EXISTS kit;
+-- El esquema se crea solo si falta: CREATE SCHEMA IF NOT EXISTS exige permiso CREATE sobre la
+-- base de datos incluso cuando ya existe, y el rol de la app (kit_gp13) no lo tiene.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'kit') THEN
+    CREATE SCHEMA kit;
+  END IF;
+END
+$$;
 
 -- 1. Fuentes web especializadas y literatura científica verificada (RAG Corpus)
 CREATE TABLE IF NOT EXISTS kit.soft_skill_sources (
