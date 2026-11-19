@@ -58,8 +58,13 @@ try {
   account = (await api("GET", "/account")).account;
 } catch (err) {
   if (err.status === 401 || err.status === 403) {
+    const myIp = await fetch("https://api.ipify.org").then((r) => r.text()).catch(() => "desconocida");
+    console.log(`Respuesta de Vultr: ${err.message}`);
+    console.log(`IP pública de este ejecutor de GitHub: ${myIp}`);
     fail(
-      "Vultr rechazó la API key. Verifique que esté copiada completa y que en Account → API → Access Control esté habilitado 'Allow All IPv4'."
+      /\bip\b/i.test(err.message)
+        ? `Vultr bloqueó la IP ${myIp}. En Account → API → Access Control pulse 'Allow All IPv4'.`
+        : "Vultr rechazó la API key. Verifique que esté copiada completa y que en Account → API → Access Control esté habilitado 'Allow All IPv4'."
     );
   }
   throw err;
