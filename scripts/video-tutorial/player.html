@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Video tutorial · Kit-GesPro GP-13 · Cómo usar la Evaluación 360°</title>
+  <meta name="description" content="Guía en video para usuarios: cómo usar Kit-GesPro GP-13, el sistema de evaluación 360° de cualidades blandas y liderazgo con Agente de IA.">
+  <meta property="og:title" content="Video tutorial · Kit-GesPro GP-13">
+  <meta property="og:description" content="Aprenda a usar la Evaluación 360° de Cualidades Blandas con Agente de IA en menos de 5 minutos.">
+  <meta property="og:image" content="poster.jpg">
+  <style>
+    :root { --accent:#9A5600; --accent-2:#E8A94B; --ink:#13171C; --ink-2:#49525C; --bg:#EDEFF2; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+    header { background:#121418; color:#fff; padding:28px 20px 90px; }
+    .wrap { max-width:1080px; margin:0 auto; }
+    .eyebrow { font:600 12px/1.4 ui-monospace,"IBM Plex Mono",monospace; letter-spacing:.16em; text-transform:uppercase; color:var(--accent-2); }
+    h1 { font-size:clamp(26px,4vw,40px); margin:10px 0 8px; line-height:1.15; }
+    header p { margin:0; color:#cfd4da; font-size:17px; max-width:720px; }
+    .player { margin-top:-64px; background:#000; border-radius:16px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.28); }
+    video { display:block; width:100%; height:auto; aspect-ratio:16/9; background:#000; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:26px 0; }
+    .card { background:#fff; border:1px solid #dde1e7; border-radius:12px; padding:16px; }
+    .card b { display:block; font:600 12px ui-monospace,monospace; color:var(--accent); margin-bottom:6px; }
+    .chapters a { display:flex; gap:10px; padding:9px 0; border-bottom:1px solid #eef0f3; color:var(--ink); text-decoration:none; }
+    .chapters a:hover { color:var(--accent); }
+    .chapters span { font:600 13px ui-monospace,monospace; color:var(--accent); min-width:44px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 40px; }
+    .btn { display:inline-block; padding:10px 16px; border-radius:10px; border:1px solid #cfd5dc; background:#fff; color:var(--ink); text-decoration:none; font-weight:600; }
+    .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+    footer { color:var(--ink-2); font-size:13px; padding:0 0 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="eyebrow">Ecosistema GesPro · Guía para usuarios</div>
+      <h1>Cómo usar Kit-GesPro GP-13</h1>
+      <p>Evaluación 360° de cualidades blandas y liderazgo con Agente de IA, explicada paso a paso en menos de 5 minutos.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="player">
+      <video id="v" controls preload="metadata" playsinline poster="poster.jpg">
+        <source src="kit-gespro-gp13-tutorial.mp4" type="video/mp4">
+        Su navegador no puede reproducir este video. <a href="kit-gespro-gp13-tutorial.mp4">Descárguelo aquí</a>.
+      </video>
+    </div>
+
+    <div class="actions">
+      <a class="btn primary" href="kit-gespro-gp13-tutorial.mp4" download>⬇ Descargar video (MP4)</a>
+    </div>
+
+    <div class="grid">
+      <div class="card chapters">
+        <b>CAPÍTULOS</b>
+        <!-- CHAPTERS -->
+      </div>
+      <div class="card">
+        <b>EN 4 PASOS</b>
+        <p>1. Elija la empresa en «Empresa Auditada».<br>2. Registre evaluaciones: califique del 1 al 5 y deje un ejemplo real.<br>3. Revise el Expediente IA y el plan 30-60-90.<br>4. Pregunte al Agente de IA.</p>
+      </div>
+      <div class="card">
+        <b>¿NECESITA ACCESO?</b>
+        <p>Solicite la dirección, el usuario y la contraseña al administrador de GesPro de su empresa.</p>
+      </div>
+    </div>
+  </main>
+  <footer class="wrap">Kit-GesPro · Ecosistema GesPro · J@RTechnologies</footer>
+  <script>
+    document.querySelectorAll("[data-t]").forEach((a) => a.addEventListener("click", (e) => {
+      e.preventDefault(); const v = document.getElementById("v"); v.currentTime = Number(a.dataset.t); v.play();
+    }));
+  </script>
+</body>
+</html>
