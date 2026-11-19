@@ -119,30 +119,49 @@ jobs:
     permissions:
       contents: read
       packages: read
+    timeout-minutes: 15
     steps:
-      - uses: appleboy/ssh-action@v1.2.0
+      # OpenSSH nativo del runner (sin descargar binarios de terceros: evita
+      # fallos transitorios de red como "curl: (56) Connection died").
+      - name: Desplegar en el servidor (ssh)
         env:
+          SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+          HOST: ${{ secrets.VULTR_HOST }}
+          SSH_USER: ${{ secrets.VULTR_USER || 'root' }}
+          SSH_PORT: ${{ secrets.VULTR_SSH_PORT || 22 }}
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_DIR: ${{ vars.DEPLOY_PATH || '/opt/gespro/kit-cualidades-blandas' }}
-        with:
-          host: ${{ secrets.VULTR_HOST }}
-          username: ${{ secrets.VULTR_USER }}
-          key: ${{ secrets.VULTR_SSH_KEY }}
-          port: ${{ secrets.VULTR_SSH_PORT || 22 }}
-          envs: GHCR_USER,GHCR_TOKEN,APP_DIR
-          script: |
-            set -e
-            SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
-            cd "$APP_DIR"
-            echo "$GHCR_TOKEN" | $SUDO docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
-            $SUDO docker compose pull
-            $SUDO docker compose up -d --remove-orphans
-            APP_PORT=$($SUDO grep -E '^HOST_PORT=' .env | cut -d= -f2 || true)
-            APP_PORT=${APP_PORT:-4500}
-            for i in $(seq 1 30); do
-              if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz"; then $SUDO docker image prune -f >/dev/null; exit 0; fi
-              sleep 2
-            done
-            $SUDO docker compose logs --tail 100
-            exit 1
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          for i in 1 2 3 4 5 6; do
+            ssh-keyscan -T 10 -p "$SSH_PORT" "$HOST" > ~/.ssh/known_hosts 2>/dev/null || true
+            [ -s ~/.ssh/known_hosts ] && break
+            echo "Esperando SSH en el servidor ($i/6)…"; sleep 10
+          done
+          [ -s ~/.ssh/known_hosts ] || { echo "::error::No se pudo contactar el servidor por SSH"; exit 1; }
+          {
+            # Variables enviadas por stdin (no aparecen en la línea de comandos remota).
+            printf 'GHCR_USER=%q\nGHCR_TOKEN=%q\nAPP_DIR=%q\n' "$GHCR_USER" "$GHCR_TOKEN" "$APP_DIR"
+            cat <<'REMOTE'
+          set -e
+          SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
+          cd "$APP_DIR"
+          echo "$GHCR_TOKEN" | $SUDO docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+          $SUDO docker compose pull
+          $SUDO docker compose up -d --remove-orphans
+          APP_PORT=$($SUDO grep -E '^HOST_PORT=' .env | cut -d= -f2 || true)
+          APP_PORT=${APP_PORT:-4500}
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz"; then
+              echo; $SUDO docker logout ghcr.io >/dev/null 2>&1 || true
+              $SUDO docker image prune -f >/dev/null; exit 0
+            fi
+            sleep 2
+          done
+          $SUDO docker compose logs --tail 100
+          exit 1
+          REMOTE
+          } | ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 \
+                -p "$SSH_PORT" "$SSH_USER@$HOST" 'bash -s'
